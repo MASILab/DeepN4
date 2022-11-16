@@ -6,31 +6,33 @@ class UNet3D(nn.Module):
     def __init__(self, n_in, n_out):
         super(UNet3D, self).__init__()
         # Encoder
-        self.ec0 = self.encoder_block(      n_in,    32, kernel_size=3, stride=1, padding=1)
-        self.ec1 = self.encoder_block(        32,    64, kernel_size=3, stride=1, padding=1)
+        c = 1
+        self.ec0 = self.encoder_block(      n_in,    1*c, kernel_size=3, stride=1, padding=1)
+        self.ec1 = self.encoder_block(        c,    c*2, kernel_size=3, stride=1, padding=1)
         self.pool0 = nn.MaxPool3d(2)
-        self.ec2 = self.encoder_block(        64,    64, kernel_size=3, stride=1, padding=1)
-        self.ec3 = self.encoder_block(        64,   128, kernel_size=3, stride=1, padding=1)
+        self.ec2 = self.encoder_block(        c*2,    c*2, kernel_size=3, stride=1, padding=1)
+        self.ec3 = self.encoder_block(        c*2,   c*4, kernel_size=3, stride=1, padding=1)
         self.pool1 = nn.MaxPool3d(2)
-        self.ec4 = self.encoder_block(       128,   128, kernel_size=3, stride=1, padding=1)
-        self.ec5 = self.encoder_block(       128,   256, kernel_size=3, stride=1, padding=1)
+        self.ec4 = self.encoder_block(       c*4,   c*4, kernel_size=3, stride=1, padding=1)
+        self.ec5 = self.encoder_block(       c*4,   c*8, kernel_size=3, stride=1, padding=1)
         self.pool2 = nn.MaxPool3d(2)
-        self.ec6 = self.encoder_block(       256,   256, kernel_size=3, stride=1, padding=1)
-        self.ec7 = self.encoder_block(       256,   512, kernel_size=3, stride=1, padding=1)
-        self.el  =          nn.Conv3d(       512,   512, kernel_size=1, stride=1, padding=0)
+        self.ec6 = self.encoder_block(       c*8,   c*8, kernel_size=3, stride=1, padding=1)
+        self.ec7 = self.encoder_block(       c*8,   c*16, kernel_size=3, stride=1, padding=1)
+        self.el  =          nn.Conv3d(       c*16,   c*16, kernel_size=1, stride=1, padding=0)
 
         # Decoder
-        self.dc9 = self.decoder_block(       512,   512, kernel_size=2, stride=2, padding=0)
-        self.dc8 = self.decoder_block( 512 + 256,   256, kernel_size=3, stride=1, padding=1)
-        self.dc7 = self.decoder_block(       256,   256, kernel_size=3, stride=1, padding=1)
-        self.dc6 = self.decoder_block(       256,   256, kernel_size=2, stride=2, padding=0)
-        self.dc5 = self.decoder_block( 256 + 128,   128, kernel_size=3, stride=1, padding=1)
-        self.dc4 = self.decoder_block(       128,   128, kernel_size=3, stride=1, padding=1)
-        self.dc3 = self.decoder_block(       128,   128, kernel_size=2, stride=2, padding=0)
-        self.dc2 = self.decoder_block(  128 + 64,    64, kernel_size=3, stride=1, padding=1)
-        self.dc1 = self.decoder_block(        64,    64, kernel_size=3, stride=1, padding=1)
-        self.dc0 = self.decoder_block(        64, n_out, kernel_size=1, stride=1, padding=0)
+        self.dc9 = self.decoder_block(       c*16,   c*16, kernel_size=2, stride=2, padding=0)
+        self.dc8 = self.decoder_block( c*16 + c*8,   c*8, kernel_size=3, stride=1, padding=1)
+        self.dc7 = self.decoder_block(       c*8,   c*8, kernel_size=3, stride=1, padding=1)
+        self.dc6 = self.decoder_block(       c*8,   c*8, kernel_size=2, stride=2, padding=0)
+        self.dc5 = self.decoder_block( c*8 + c*4,   c*4, kernel_size=3, stride=1, padding=1)
+        self.dc4 = self.decoder_block(       c*4,   c*4, kernel_size=3, stride=1, padding=1)
+        self.dc3 = self.decoder_block(       c*4,   c*4, kernel_size=2, stride=2, padding=0)
+        self.dc2 = self.decoder_block(  c*4 + c*2,    c*2, kernel_size=3, stride=1, padding=1)
+        self.dc1 = self.decoder_block(        c*2,    c*2, kernel_size=3, stride=1, padding=1)
+        self.dc0 = self.decoder_block(        c*2, n_out, kernel_size=1, stride=1, padding=0)
         self.dl  = nn.ConvTranspose3d(     n_out, n_out, kernel_size=1, stride=1, padding=0)
+        self.act = nn.Sigmoid()
         # self.dl  = BSplineLayer(     4, 4, n_bases=6, shared_weights=True,bias=False, weighted_sum=False)#, kernel_size=1, stride=1, padding=0)
 
     def encoder_block(self, in_channels, out_channels, kernel_size, stride, padding):
@@ -99,4 +101,5 @@ class UNet3D(nn.Module):
         # Last layer without relu
         out  = self.dl(d0)
 
-        return out
+        return out #self.act(out)
+
