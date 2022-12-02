@@ -6,7 +6,7 @@ class UNet3D(nn.Module):
     def __init__(self, n_in, n_out):
         super(UNet3D, self).__init__()
         # Encoder
-        c = 1
+        c = 32
         self.ec0 = self.encoder_block(      n_in,    1*c, kernel_size=3, stride=1, padding=1)
         self.ec1 = self.encoder_block(        c,    c*2, kernel_size=3, stride=1, padding=1)
         self.pool0 = nn.MaxPool3d(2)
@@ -32,7 +32,7 @@ class UNet3D(nn.Module):
         self.dc1 = self.decoder_block(        c*2,    c*2, kernel_size=3, stride=1, padding=1)
         self.dc0 = self.decoder_block(        c*2, n_out, kernel_size=1, stride=1, padding=0)
         self.dl  = nn.ConvTranspose3d(     n_out, n_out, kernel_size=1, stride=1, padding=0)
-        self.act = nn.Sigmoid()
+        self.act = nn.ReLU()
         # self.dl  = BSplineLayer(     4, 4, n_bases=6, shared_weights=True,bias=False, weighted_sum=False)#, kernel_size=1, stride=1, padding=0)
 
     def encoder_block(self, in_channels, out_channels, kernel_size, stride, padding):
@@ -101,5 +101,5 @@ class UNet3D(nn.Module):
         # Last layer without relu
         out  = self.dl(d0)
 
-        return out #self.act(out)
+        return self.act(out)
 
