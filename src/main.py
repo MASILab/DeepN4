@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from data import *
-from batch import train, test, predict
+from batch_bias import train, test, predict
 # from simple_model import *
 from model import *
 from utils import *
@@ -23,7 +23,7 @@ def pred_model(val_file, checkpoint_file, model_dir):
         for l in f.readlines():
             paths = l.strip().split(',')
             # outpath = '{}/{}_{}'.format(Path(paths[1]).parent, 'pred', Path(paths[1]).name)
-            outpath = os.path.join(model_dir ,'train_pred_3dunet_bias.nii.gz')
+            outpath = os.path.join(model_dir ,'pred_3dunet_divide_bias.nii.gz')
             print(outpath)
             # val_dataset = dataset_predict(paths)
             val_dataset = dataset_predict(paths)
@@ -105,7 +105,7 @@ def train_model(train_file, val_file, model_dir, cont_train=False, checkpoint_fi
             min_loss = val_loss
             save_model(model, optimizer, '{}/checkpoint_epoch_{}'.format(model_dir, epoch))
 
-        writer.add_scalars('Loss',   {'Train_3dunet_bias': train_loss, 'Validation_3dunet_bias': val_loss}, epoch)
+        writer.add_scalars('Loss',   {'Train_3dunet_dividebias': train_loss, 'Validation_3dunet_dividebias': val_loss}, epoch)
 
     
         # if epoch%10 == 0:
@@ -121,7 +121,6 @@ def main():
     test_file = '/nfs/masi/kanakap/projects/DeepN4/src/test_5ds.csv'
     #test_file = '/nfs/masi/kanakap/projects/DeepN4/src/test_train_5ds.csv'
 
-
     model_dir = '/nfs/masi/kanakap/projects/DeepN4/src/unet_trained_model'
     fcheckpoint = 'checkpoint_epoch_63'
     if not os.path.isdir(model_dir):
@@ -130,7 +129,6 @@ def main():
     #train_model(train_file, val_file, model_dir, cont_train=False, checkpoint_file='{}/{}'.format(model_dir, fcheckpoint))
     # test_model(test_file, '{}/{}'.format(model_dir, fcheckpoint))
     pred_model(test_file, '{}/{}'.format(model_dir, fcheckpoint),model_dir)
-
 
 if __name__ == '__main__':
     main()

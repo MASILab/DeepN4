@@ -59,26 +59,18 @@ class dataset(Dataset):
 
     def load(self, subj):
         target = nib.load(subj['target'])
+        self.input = nib.load(subj['input']).get_fdata()
+        self.input, _ = self.pad(self.input, 128)
+        self.in_max = np.percentile(self.input[np.nonzero(self.input)], 99.99)
+        self.input = self.normalize_img(self.input, self.in_max, 0, 1, 0)
+
         self.affine = target.affine
         self.header = target.header
-        self.target = target.get_fdata()
+        self.target_unnorm = target.get_fdata()
         self.orig_shape = target.shape
-        voxel_size = [2,2,2]
-        # self.resampled_target = proc.resample_to_output(target, voxel_size)
-        # self.target, self.pad_idx = self.pad(self.resampled_target.get_fdata(), 128)
-        self.target, self.pad_idx = self.pad(self.target, 128)
+        self.target, self.pad_idx = self.pad(self.target_unnorm, 128)
         self.target_max = np.percentile(self.target[np.nonzero(self.target)], 99.99)
-        self.target = self.normalize_img(self.target, self.target_max, 0, 1, 0)
-
-        input_img= nib.load(subj['input'])
-        self.input = nib.load(subj['input']).get_fdata()
-        # self.resampled_input = proc.resample_to_output(input_img, voxel_size)
-        # self.mask = nib.load(os.path.join('/'.join(subj['input'].split('/')[0:-1]), 'seg', '5iso_seg.nii.gz')).get_fdata()
-        # self.input, _ = self.pad(self.resampled_input.get_fdata(), 128)
-        self.input, _ = self.pad(self.input, 128)
-        in_max = np.percentile(self.input[np.nonzero(self.input)], 99.99)
-        self.input = self.normalize_img(self.input, in_max, 0, 1, 0)
-
+        self.target = self.normalize_img(self.target, self.in_max, 0, 1, 0)
 
     def prep_input(self):
         input_vols = self.input
@@ -116,15 +108,15 @@ class dataset_predict(dataset):
         input_vols[0,:,:,:] = self.input
         target_vols[0,:,:,:] = self.target
 
-        return torch.from_numpy(input_vols).float(), torch.from_numpy(target_vols).float(), self.target_max
+        return torch.from_numpy(input_vols).float(), torch.from_numpy(target_vols).float(), self.in_max, self.target_unnorm
 
     def __len__(self):
         # return int(np.ceil((self.input.shape[3])/1))
         return 1
 
     def __getitem__(self,i):
-        input_vols, target_vols, target_max = self.prep_input(i)
+        input_vols, target_vols, in_max, target_unnorm = self.prep_input(i)
 
         return {'input': input_vols, 'target': target_vols,
                 'orig_shape': self.orig_shape,
-                'max':target_max, 'pad_idx':self.pad_idx}
+                'max':in_max, 'pad_idx':self.pad_idx, 'target_unnorm': target_unnorm}

@@ -2,7 +2,7 @@ import torch
 from torch.nn.functional import interpolate
 import numpy as np
 from tqdm import tqdm
-from utils import unnormalize_img
+from utils import unnormalize_img, rmse
 import nibabel as nib
 from pathlib import Path
 import os
@@ -54,11 +54,9 @@ def test(model, loader, device):
 
                 output = model(in_features)
 
-                loss_fun = torch.nn.MSELoss(reduction='mean')
-                #loss_fun = torch.nn.L1Loss()
+                #loss_fun = torch.nn.MSELoss(reduction='mean')
+                loss_fun = torch.nn.L1Loss()
                 # loss = loss_fun(output[mask==1], target[mask==1])
-                output = torch.log(output) * in_features
-                # target = np.log(target) * in_features
                 loss = loss_fun(output, target)
                 total_loss += loss.item()
                 
@@ -92,8 +90,6 @@ def predict(model, loader, device, nii_path, out_path):
                 # outputs.append(output.cpu())
 
                 loss_fun = torch.nn.MSELoss(reduction='mean')
-                output = torch.log(output) * in_features
-                # target = np.log(target) * in_features
                 #loss_fun = torch.nn.L1Loss()
                 loss = loss_fun(output, target)
 
@@ -104,10 +100,10 @@ def predict(model, loader, device, nii_path, out_path):
 
                 # xyz = sample['xyz']
                 # overlap = sample['overlap']
-                # scale = sample['max']
-                output = torch.log(output) * in_features
-                output = output.cpu() 
-                #output = output #* scale #* mask.cpu()
+                output = output.cpu()
+                output = output #* scale #* mask.cpu()
+                test_error = rmse(output, target.cpu())
+                print(test_error)   
                 
 
                 # tmp = torch.zeros(overlap.shape)
@@ -120,22 +116,21 @@ def predict(model, loader, device, nii_path, out_path):
                 outputs.append(output.clone())
 
 
+            # out = torch.stack(outputs, dim=0).squeeze()
+            out = output.squeeze() 
+            out = out.numpy() 
             
             pad_idx, orig_shape = sample['pad_idx'], sample['orig_shape']
             lx,lX,ly,lY,lz,lZ,rx,rX,ry,rY,rz,rZ = pad_idx
-            out = torch.stack(outputs, dim=0).squeeze()
-            out = out.numpy()
-            
-            # out = out.permute(1,2,3,0).numpy()
-            # import pdb;pdb.set_trace()
-            # out = unnormalize_img(out, sample['max'].numpy(), 0, 1, 0)
             final_out = np.zeros([orig_shape[0], orig_shape[1], orig_shape[2]])
+            print(out.shape)
+            print(final_out.shape)
             final_out[rx:rX,ry:rY,rz:rZ] = out[lx:lX,ly:lY,lz:lZ]
             final_out = unnormalize_img(final_out, sample['max'].numpy(), 0, 1, 0)
-            # voxel_size = [1, 1, 1]
-            # final_out = proc.resample_to_output(final_out, voxel_size)
+            print(final_out.shape)
 
-
+            test_error = rmse(final_out,sample['target_unnorm'])
+            print(test_error)
             ref = nib.load(nii_path)
 
             nii = nib.Nifti1Image(final_out, affine=ref.affine, header=ref.header)

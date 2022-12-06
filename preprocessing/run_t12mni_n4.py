@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 # INPUT SHOULD BE BOTH T1 and T1N4
 # Get the T1s from the text file
-with open('qa_all_N4T1s.txt', 'r') as f:
+with open('../rem_mni_N4T1s.txt', 'r') as f:
     T1s = f.read().splitlines()
 T1s.sort()
 
@@ -13,7 +13,7 @@ T1s.sort()
 MNI_atlas = '/nfs/masi/newlinnr/cr3/MNI152NLinSym.nii'
 for T1 in tqdm(T1s):
     # Output folder for MNI 
-    project_folder = T1.split('sub')[0]
+    project_folder = T1.split('derivatives')[0]
     T1file = T1.split('/')[-1]
     sub = T1file.split('_')[0]
     ses = T1file.split('_')[1]
@@ -31,7 +31,7 @@ for T1 in tqdm(T1s):
 
     # T1 to MNI
     print("Running T12mni" + T1)
-    bashCommand = "sh /nfs/masi/kanakap/projects/DeepN4/t12mni.sh " + T1 + " " + MNI_atlas + " "+ out_file
+    bashCommand = "sh /nfs/masi/kanakap/projects/DeepN4/preprocessing/t12mni.sh " + T1 + " " + MNI_atlas + " "+ out_file
     print(bashCommand)
     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
     output, error = process.communicate()
