@@ -1,18 +1,18 @@
 import torch
 from torch.utils.data import DataLoader
 from data import *
-from batch_bias import train, test, predict
-# from simple_model import *
-from model import *
+from batch_logspace_bias import train, test, predict
+from model_linear2 import *
 from utils import *
 import os
-from pathlib import Path
+# import torchvision
+# import torchvision.transforms as transforms
 from torch.utils.tensorboard import SummaryWriter
 
 def pred_model(val_file, checkpoint_file, model_dir):
     use_cuda = torch.cuda.is_available()
     torch.manual_seed(1)
-    device = torch.device("cuda:1")# if use_cuda else "cpu")
+    device = torch.device("cuda:2")# if use_cuda else "cpu")
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
 
     model = UNet3D(1, 1).to(device)
@@ -23,19 +23,21 @@ def pred_model(val_file, checkpoint_file, model_dir):
         for l in f.readlines():
             paths = l.strip().split(',')
             # outpath = '{}/{}_{}'.format(Path(paths[1]).parent, 'pred', Path(paths[1]).name)
-            outpath = os.path.join(model_dir ,'pred_3dunet_divide_bias.nii.gz')
+            outpath = os.path.join(model_dir ,'pred_3dunet_logsub_d200.nii.gz')
+            outpath_bias = os.path.join(model_dir ,'pred_biasfield_logsub_d200.nii.gz')
+            estpath_bias = os.path.join(model_dir ,'est_biasfield_logsub_d200.nii.gz')
             print(outpath)
             # val_dataset = dataset_predict(paths)
             val_dataset = dataset_predict(paths)
             val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, **kwargs)
-            predict(model, val_loader, device, paths[1], outpath)
+            predict(model, val_loader, device, paths[1], outpath, outpath_bias, estpath_bias)
             break
 
 
 def test_model(val_file, checkpoint_file):
     use_cuda = torch.cuda.is_available()
     torch.manual_seed(1)
-    device = torch.device("cuda" if use_cuda else "cpu")
+
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
 
     val_dataset = dataset(val_file)
@@ -49,15 +51,23 @@ def test_model(val_file, checkpoint_file):
     test_loss = test(model, val_loader, device)#, save_output=True)
 
 
-
-def train_model(train_file, val_file, model_dir, cont_train=False, checkpoint_file=''):
-    out_dir = 'output'
-    writer = SummaryWriter(out_dir)
+def train_model(train_file, val_file, model_dir, ten_out_dir, cont_train=False, checkpoint_file=''):
+    writer = SummaryWriter(ten_out_dir)
     use_cuda = torch.cuda.is_available()
     print("Running on {}".format(use_cuda))
     torch.manual_seed(1)
     device = torch.device("cuda" if use_cuda else "cpu")
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
+
+    # trans_train = transforms.Compose([
+    #                               transforms.RandomHorizontalFlip(),
+    #                               transforms.RandomRotation(degrees=20),
+    #                               transforms.ToTensor()])
+
+    # trans_valid = transforms.Compose([
+    #                               transforms.RandomHorizontalFlip(),
+    #                               transforms.RandomRotation(degrees=20),
+    #                               transforms.ToTensor()])
 
     train_dataset = dataset(train_file)
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False, **kwargs)
@@ -105,7 +115,7 @@ def train_model(train_file, val_file, model_dir, cont_train=False, checkpoint_fi
             min_loss = val_loss
             save_model(model, optimizer, '{}/checkpoint_epoch_{}'.format(model_dir, epoch))
 
-        writer.add_scalars('Loss',   {'Train_3dunet_dividebias': train_loss, 'Validation_3dunet_dividebias': val_loss}, epoch)
+        writer.add_scalars('Loss',   {'Train_3dunet_logsub_d200': train_loss, 'Validation_3dunet_logsub_d200': val_loss}, epoch)
 
     
         # if epoch%10 == 0:
@@ -116,19 +126,20 @@ def train_model(train_file, val_file, model_dir, cont_train=False, checkpoint_fi
 
 def main():
     # test_file = '../folds/test.csv'
-    train_file = '/nfs/masi/kanakap/projects/DeepN4/src/train_5ds.csv'
-    val_file = '/nfs/masi/kanakap/projects/DeepN4/src/val_5ds.csv'
+    train_file = '/nfs/masi/kanakap/projects/DeepN4/src/train_100ds.csv'
+    val_file = '/nfs/masi/kanakap/projects/DeepN4/src/val_100ds.csv'
     test_file = '/nfs/masi/kanakap/projects/DeepN4/src/test_5ds.csv'
     #test_file = '/nfs/masi/kanakap/projects/DeepN4/src/test_train_5ds.csv'
 
-    model_dir = '/nfs/masi/kanakap/projects/DeepN4/src/unet_trained_model'
-    fcheckpoint = 'checkpoint_epoch_63'
+    model_dir = '/nfs/masi/kanakap/projects/DeepN4/src/unet_trained_model_logsub_d200'
+    fcheckpoint = 'checkpoint_epoch_56'
     if not os.path.isdir(model_dir):
         os.mkdir(model_dir)
+    ten_out_dir = '/nfs/masi/kanakap/projects/DeepN4/src/output2'
 
-    #train_model(train_file, val_file, model_dir, cont_train=False, checkpoint_file='{}/{}'.format(model_dir, fcheckpoint))
+    train_model(train_file, val_file, model_dir, ten_out_dir, cont_train=False, checkpoint_file='{}/{}'.format(model_dir, fcheckpoint))
     # test_model(test_file, '{}/{}'.format(model_dir, fcheckpoint))
-    pred_model(test_file, '{}/{}'.format(model_dir, fcheckpoint),model_dir)
+    #pred_model(test_file, '{}/{}'.format(model_dir, fcheckpoint),model_dir)
 
 if __name__ == '__main__':
     main()

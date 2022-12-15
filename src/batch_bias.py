@@ -2,7 +2,7 @@ import torch
 from torch.nn.functional import interpolate
 import numpy as np
 from tqdm import tqdm
-from utils import unnormalize_img
+from utils import unnormalize_img, rmse
 import nibabel as nib
 from pathlib import Path
 import os
@@ -20,21 +20,23 @@ def train(model, loader, optimizer, device, epoch):
         for batch_idx, sample in enumerate(loader):
             in_features, target = sample['input'], sample['target']#, sample['mask']
             in_features, target = in_features.to(device), target.to(device)#, mask.to(device)
-
             optimizer.zero_grad()
 
             field = model(in_features)
+
             output = in_features / field
+            # mask = torch.logical_and(output > 0, target > 0)
+            # output = output[mask] 
             # target = np.log(target) * in_features
             #loss_fun = torch.nn.MSELoss(reduction='mean')
             loss_fun = torch.nn.L1Loss()
-            loss = loss_fun(output, target)
             #loss = genloss(output, target, mask)
+            loss = loss_fun(output, target)
+            if loss != 0:
+                loss.backward()
+                optimizer.step()
 
-            loss.backward()
-            optimizer.step()
-
-            total_loss += loss.item()
+                total_loss += loss.item()
 
             pbar.set_description("Epoch {}\tAvg Loss: {:.4f}".format(epoch, total_loss / (batch_idx + 1)))
             pbar.update(1)
@@ -53,14 +55,13 @@ def test(model, loader, device):
 
                 field = model(in_features)
                 output = in_features / field
-                # target = np.log(target) * in_features
-
                 #loss_fun = torch.nn.MSELoss(reduction='mean')
                 loss_fun = torch.nn.L1Loss()
                 # loss = loss_fun(output[mask==1], target[mask==1])
                 
                 loss = loss_fun(output, target)
-                total_loss += loss.item()
+                if loss != 0:
+                    total_loss += loss.item()
                 
                 # accuracy = dsc_fun(output, target)
                 # total_accuracy += accuracy
@@ -72,7 +73,7 @@ def test(model, loader, device):
             # print(total_accuracy / len(loader.dataset.train_iter)  )  
             return total_loss / len(loader)#.dataset.train_iter)#len(loader)
 
-def predict(model, loader, device, nii_path, out_path):
+def predict(model, loader, device, nii_path, out_path, out_bias_path, est_bias_path):
     model.eval()
     total_loss = 0
     outputs = []
@@ -87,7 +88,7 @@ def predict(model, loader, device, nii_path, out_path):
                 in_features, target = in_features.to(device), target.to(device)#, mask.to(device)
                 # starts.extend(sample['start'])
                 # stops.extend(sample['stop'])
-
+                estimated = in_features / target
                 field = model(in_features)
                 output =  in_features / field
                 # target = np.log(target) * in_features
@@ -107,9 +108,9 @@ def predict(model, loader, device, nii_path, out_path):
                 # scale = sample['max']
                 # output = output / in_features
                 output = output.cpu()  
-                #output = output #* scale #* mask.cpu()
-                
-
+                field = field.cpu()
+                estimated = estimated.cpu()
+                #output = output #* scale #* mask.cpu() 
                 # tmp = torch.zeros(overlap.shape)
                 #
                 # for i in range(len(xyz)):
@@ -124,22 +125,37 @@ def predict(model, loader, device, nii_path, out_path):
             pad_idx, orig_shape = sample['pad_idx'], sample['orig_shape']
             lx,lX,ly,lY,lz,lZ,rx,rX,ry,rY,rz,rZ = pad_idx
             out = torch.stack(outputs, dim=0).squeeze()
-            # ip = in_features.squeeze()
             out = out.numpy() 
-            # ip = ip.cpu().numpy()
+            field = field.squeeze()
+            field = field.numpy()
+            estimated = estimated.squeeze()
+            estimated = estimated.numpy()
+
+            rmse_image = rmse(output, target.cpu())
+            print('RMSE image', rmse_image)
+            # import pdb;pdb.set_trace()
+            rmse_field = rmse(estimated, field)
+            print('RMSE field', rmse_field) 
             
-            # out = out.permute(1,2,3,0).numpy()
+            # shape back to orginal image and unnormalize
             final_out = np.zeros([orig_shape[0], orig_shape[1], orig_shape[2]])
             final_out[rx:rX,ry:rY,rz:rZ] = out[lx:lX,ly:lY,lz:lZ]
-            # final_ip = np.zeros([orig_shape[0], orig_shape[1], orig_shape[2]])
-            # final_ip[rx:rX,ry:rY,rz:rZ] = ip[lx:lX,ly:lY,lz:lZ]
-            # import pdb;pdb.set_trace()
+            final_field = np.zeros([orig_shape[0], orig_shape[1], orig_shape[2]])
+            final_field[rx:rX,ry:rY,rz:rZ] = field[lx:lX,ly:lY,lz:lZ]
+            final_estimated = np.zeros([orig_shape[0], orig_shape[1], orig_shape[2]])
+            final_estimated[rx:rX,ry:rY,rz:rZ] = estimated[lx:lX,ly:lY,lz:lZ]
             final_out = unnormalize_img(final_out, sample['max'].numpy(), 0, 1, 0)
-            # out = np.log(final_out) * final_ip
+            # final_field  = unnormalize_img(final_field, sample['max'].numpy(), 0, 1, 0)
+            # final_estimated  = unnormalize_img(final_estimated, sample['max'].numpy(), 0, 1, 0)
         
             ref = nib.load(nii_path)
-
             nii = nib.Nifti1Image(final_out, affine=ref.affine, header=ref.header)
             nib.save(nii, out_path)
+
+            nii = nib.Nifti1Image(final_field, affine=ref.affine, header=ref.header)
+            nib.save(nii, out_bias_path)
+
+            nii = nib.Nifti1Image(final_estimated, affine=ref.affine, header=ref.header)
+            nib.save(nii, est_bias_path)
 
             return total_loss / len(loader)#.dataset.train_iter)#len(loader)

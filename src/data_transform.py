@@ -67,8 +67,8 @@ class dataset(Dataset):
     def load(self, subj):
         target = nib.load(subj['target'])
         self.input = nib.load(subj['input']).get_fdata()
-        # self.input = self.transform(self.input)
-        self.input, _ = self.pad(self.input, 32)
+        self.input = self.transform(self.input)
+        self.input, _ = self.pad(self.input, 128)
         self.in_max = np.percentile(self.input[np.nonzero(self.input)], 99.99)
         self.input = self.normalize_img(self.input, self.in_max, 0, 1, 0)
         
@@ -77,8 +77,8 @@ class dataset(Dataset):
         self.header = target.header
         self.target_unnorm = target.get_fdata()
         self.orig_shape = target.shape
-        # self.target_unnorm = self.transform(self.target_unnorm)
-        self.target, self.pad_idx = self.pad(self.target_unnorm, 32)
+        self.target_unnorm = self.transform(self.target_unnorm)
+        self.target, self.pad_idx = self.pad(self.target_unnorm, 128)
         self.target_max = np.percentile(self.target[np.nonzero(self.target)], 99.99)
         self.target = self.normalize_img(self.target, self.in_max, 0, 1, 0)
         
@@ -110,8 +110,8 @@ class dataset_predict(dataset):
 
     def prep_input(self, i):
 
-        input_vols = np.zeros((1, 32, 32, 32))
-        target_vols = np.zeros((1, 32, 32, 32))
+        input_vols = np.zeros((1, 128, 128, 128))
+        target_vols = np.zeros((1, 128, 128, 128))
 
         input_vols[0,:,:,:] = self.input
         target_vols[0,:,:,:] = self.target
