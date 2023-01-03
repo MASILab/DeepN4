@@ -4,8 +4,8 @@ import nibabel as nib
 from torch.utils.data import Dataset
 from scipy.ndimage.interpolation import rotate
 from numpy import random
+from custom_image3d import * 
 
-import os
 
 class dataset(Dataset):
     def __init__(self, csv, task=1):
@@ -15,7 +15,7 @@ class dataset(Dataset):
         with open(csv, 'r') as f:
             for l in f.readlines():
                 paths = l.strip().split(',')
-                self.train_iter.append({'target':paths[0], 'input':paths[task]})
+                self.train_iter.append({'correct':paths[0], 'input':paths[task], 'bias':paths[2]})
 
     def pad(self, img, sz):
 
@@ -65,31 +65,47 @@ class dataset(Dataset):
         return fliped
 
     def load(self, subj):
-        target = nib.load(subj['target'])
+        correct = nib.load(subj['correct'])
+        bias = nib.load(subj['bias'])
         self.input = nib.load(subj['input']).get_fdata()
+        
         # self.input = self.transform(self.input)
         self.input, _ = self.pad(self.input, 128)
         self.in_max = np.percentile(self.input[np.nonzero(self.input)], 99.99)
         self.input = self.normalize_img(self.input, self.in_max, 0, 1, 0)
+        image_transformer = ImageTransformer(rotation_range=0., shift_range=0.,shear_range=0.6,zoom_range=0.,crop_size=None,fill_mode='nearest',cval=0.,
+        flip=False, seed=None, return_affine=False, return_affine_params=False, track_flip_number=False, chan_axis=3)
+        self.input = image_transformer.random_transform(self.input)[0]
         
 
-        self.affine = target.affine
-        self.header = target.header
-        self.target_unnorm = target.get_fdata()
-        self.orig_shape = target.shape
+        self.affine = correct.affine
+        self.header = correct.header
+        self.correct = correct.get_fdata()
+        self.orig_shape = correct.shape
         # self.target_unnorm = self.transform(self.target_unnorm)
-        self.target, self.pad_idx = self.pad(self.target_unnorm, 128)
-        self.target_max = np.percentile(self.target[np.nonzero(self.target)], 99.99)
-        self.target = self.normalize_img(self.target, self.in_max, 0, 1, 0)
+        self.correct, self.pad_idx = self.pad(self.correct, 128)
+        self.correct_max = np.percentile(self.correct[np.nonzero(self.correct)], 99.99)
+        self.correct = self.normalize_img(self.correct, self.in_max, 0, 1, 0)
+
+        self.affine = bias.affine
+        self.header = bias.header
+        self.bias = bias.get_fdata()
+        self.orig_shape = bias.shape
+        # self.target_unnorm = self.transform(self.target_unnorm)
+        self.bias, self.pad_idx = self.pad(self.bias, 128)
+        # self.bias_max = np.percentile(self.bias[np.nonzero(self.bias)], 99.99)
+        # self.bias = self.normalize_img(self.bias, self.bias_max, 0, 1, 0)
         
 
     def prep_input(self):
         input_vols = self.input
-        target_vols =  self.target
+        correct_vols =  self.correct
+        bias_vols =  self.bias
         input_vols = np.expand_dims(input_vols, axis=0)
-        target_vols = np.expand_dims(target_vols, axis=0)
+        correct_vols = np.expand_dims(correct_vols, axis=0)
+        bias_vols = np.expand_dims(bias_vols, axis=0)
 
-        return torch.from_numpy(input_vols).float(), torch.from_numpy(target_vols).float()#, torch.from_numpy(mask_vols).float()
+        return torch.from_numpy(input_vols).float(), torch.from_numpy(correct_vols).float(), torch.from_numpy(bias_vols).float()
 
     def __len__(self):
 
@@ -99,32 +115,36 @@ class dataset(Dataset):
 
         if torch.is_tensor(i): i = i.tolist()
         self.load(self.train_iter[i])
-        input_vols, target_vols = self.prep_input()
+        input_vols, correct_vols, bias_vols  = self.prep_input()
 
-        return {'input':input_vols, 'target':target_vols}#, 'mask':mask_vols}
+        return {'input':input_vols, 'correct':correct_vols, 'bias':bias_vols}
 
 class dataset_predict(dataset):
     def __init__(self, paths, task=1):
-        self.load({'target': paths[0], 'input': paths[task]})#, 'bval': paths[3], 'bvec': paths[4]})
+        self.load({'correct':paths[0], 'input':paths[task], 'bias':paths[2]})#, 'bval': paths[3], 'bvec': paths[4]})
 
 
     def prep_input(self, i):
 
         input_vols = np.zeros((1, 128, 128, 128))
-        target_vols = np.zeros((1, 128, 128, 128))
+        correct_vols = np.zeros((1, 128, 128, 128))
+        bias_vols = np.zeros((1, 128, 128, 128))
 
+
+        #input_vols[:,:,:] = self.input
         input_vols[0,:,:,:] = self.input
-        target_vols[0,:,:,:] = self.target
+        correct_vols[0,:,:,:] = self.correct
+        bias_vols[0,:,:,:] = self.bias
 
-        return torch.from_numpy(input_vols).float(), torch.from_numpy(target_vols).float(), self.in_max, self.target_unnorm
+        return torch.from_numpy(input_vols).float(), torch.from_numpy(correct_vols).float(), torch.from_numpy(bias_vols).float(), self.in_max
 
     def __len__(self):
         # return int(np.ceil((self.input.shape[3])/1))
         return 1
 
     def __getitem__(self,i):
-        input_vols, target_vols, in_max, target_unnorm = self.prep_input(i)
+        input_vols, correct_vols, bias_vols, in_max = self.prep_input(i)
 
-        return {'input': input_vols, 'target': target_vols,
+        return {'input': input_vols, 'correct': correct_vols, 'bias': bias_vols,
                 'orig_shape': self.orig_shape,
-                'max':in_max, 'pad_idx':self.pad_idx, 'target_unnorm': target_unnorm}
+                'max':in_max, 'pad_idx':self.pad_idx}

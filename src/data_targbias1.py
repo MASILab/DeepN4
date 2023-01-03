@@ -73,10 +73,9 @@ class dataset(Dataset):
         self.input, _ = self.pad(self.input, 128)
         self.in_max = np.percentile(self.input[np.nonzero(self.input)], 99.99)
         self.input = self.normalize_img(self.input, self.in_max, 0, 1, 0)
-        image_transformer = ImageTransformer(rotation_range=180, shift_range=0.,shear_range=0.6,zoom_range=0.,crop_size=None,fill_mode='nearest',cval=0.,
-        flip=False, seed=None, return_affine=False, return_affine_params=False, track_flip_number=False, chan_axis=3)
+        image_transformer = ImageTransformer(rotation_range=180, shift_range=0.,shear_range=0.6,zoom_range=0.,crop_size=None,fill_mode='nearest',cval=0.,flip=False, seed=None, return_affine=False, return_affine_params=False, track_flip_number=False, chan_axis=2)
         self.input = image_transformer.random_transform(self.input, passthru=[0])[0]
-        
+        self.input = np.squeeze(self.input)
 
         self.affine = correct.affine
         self.header = correct.header
@@ -87,7 +86,7 @@ class dataset(Dataset):
         self.correct_max = np.percentile(self.correct[np.nonzero(self.correct)], 99.99)
         self.correct = self.normalize_img(self.correct, self.in_max, 0, 1, 0)
         self.correct = image_transformer.random_transform(self.correct, passthru=[0])[0]
-
+        self.correct = np.squeeze(self.correct) 
 
         self.affine = bias.affine
         self.header = bias.header
@@ -96,6 +95,7 @@ class dataset(Dataset):
         # self.target_unnorm = self.transform(self.target_unnorm)
         self.bias, self.pad_idx = self.pad(self.bias, 128)
         self.bias = image_transformer.random_transform(self.bias, passthru=[0])[0]
+        self.bias = np.squeeze(self.bias) 
         # self.bias_max = np.percentile(self.bias[np.nonzero(self.bias)], 99.99)
         # self.bias = self.normalize_img(self.bias, self.bias_max, 0, 1, 0)
         

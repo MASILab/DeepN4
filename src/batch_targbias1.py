@@ -18,25 +18,20 @@ def train(model, loader, optimizer, device, epoch):
     #with tqdm(total=len(loader)) as pbar:
     with tqdm(total=len(loader.dataset.train_iter)) as pbar:
         for batch_idx, sample in enumerate(loader):
-            in_features, target = sample['input'], sample['target']#, sample['mask']
-            in_features, target = in_features.to(device), target.to(device)#, mask.to(device)
+            in_features, correct, bias = sample['input'], sample['correct'], sample['bias']
+            in_features, correct, bias = in_features.to(device), correct.to(device), bias.to(device)
 
             optimizer.zero_grad()
-            import pdb; pdb.set_trace()
+
             logfield = model(in_features)
             logpred = torch.log(in_features) - logfield
             loss_fun = torch.nn.L1Loss()
-            loss = loss_fun(torch.exp(logpred), target)
+            loss = loss_fun(torch.exp(logfield), bias) + loss_fun(torch.exp(logpred), correct) 
+
             mask = torch.Tensor(in_features > 0)
             mask = mask / torch.sum(mask)
             loss_masked = torch.sum(loss * mask)
 
-            
-            # if loss_masked != 0:
-
-            #     loss.backward()
-            #     optimizer.step()
-            #     total_loss += loss.item()  
             loss_masked.backward()
             optimizer.step()
             total_loss += loss_masked.item()
@@ -53,20 +48,19 @@ def test(model, loader, device):
     with torch.no_grad():
         with tqdm(total=len(loader)) as pbar:
             for batch_idx, sample in enumerate(loader):
-                in_features, target = sample['input'], sample['target']#, sample['mask']
-                in_features, target = in_features.to(device), target.to(device)#, mask.to(device)
+                in_features, correct, bias = sample['input'], sample['correct'], sample['bias']
+                in_features, correct, bias = in_features.to(device), correct.to(device), bias.to(device)
 
 
 
                 logfield = model(in_features)
                 logpred = torch.log(in_features) - logfield
                 loss_fun = torch.nn.L1Loss()
-                loss = loss_fun(torch.exp(logpred), target)
-
+                loss = loss_fun(torch.exp(logfield), bias) + loss_fun(torch.exp(logpred), correct) 
+                
                 mask = torch.Tensor(in_features > 0)
                 mask = mask / torch.sum(mask)
                 loss_masked = torch.sum(loss * mask)
-                # target = np.log(target) * in_features
 
                 #loss_fun = torch.nn.MSELoss(reduction='mean')
                 # loss = loss_fun(output[mask==1], target[mask==1])
@@ -94,19 +88,17 @@ def predict(model, loader, device, nii_path, out_path, out_bias_path, est_bias_p
     with torch.no_grad():
         with tqdm(total=len(loader)) as pbar:
             for batch_idx, sample in enumerate(loader):
-                in_features, target = sample['input'], sample['target']#, sample['mask']
-                in_features, target = in_features.to(device), target.to(device)#, mask.to(device)
+                in_features, correct, bias = sample['input'], sample['correct'], sample['bias']
+                in_features, correct, bias = in_features.to(device), correct.to(device), bias.to(device)
 
-                estimated = in_features / target
-                logfield  = model(in_features)
-                output = torch.log(in_features) - logfield 
-                field = torch.exp(logfield)
-                output = torch.exp(output)
-
-
+                estimated = bias
+                logfield = model(in_features)
+                logpred = torch.log(in_features) - logfield
                 loss_fun = torch.nn.MSELoss(reduction='mean')
-                #loss_fun = torch.nn.L1Loss()
-                loss = loss_fun(output, target)
+                loss =  loss_fun(torch.exp(logfield), bias)  + loss_fun(torch.exp(logpred), correct) 
+
+                field = torch.exp(logfield)
+                output = torch.exp(logpred)
 
                 total_loss += loss.item()
 
@@ -129,7 +121,7 @@ def predict(model, loader, device, nii_path, out_path, out_bias_path, est_bias_p
             estimated = estimated.squeeze()
             estimated = estimated.numpy()
 
-            rmse_image = rmse(output, target.cpu())
+            rmse_image = rmse(output, correct.cpu())
             print('RMSE image', rmse_image)
             rmse_field = rmse(estimated, field)
             print('RMSE field', rmse_field) 
@@ -139,10 +131,14 @@ def predict(model, loader, device, nii_path, out_path, out_bias_path, est_bias_p
             final_out[rx:rX,ry:rY,rz:rZ] = out[lx:lX,ly:lY,lz:lZ]
             final_field = np.zeros([orig_shape[0], orig_shape[1], orig_shape[2]])
             final_field[rx:rX,ry:rY,rz:rZ] = field[lx:lX,ly:lY,lz:lZ]
+
             final_estimated = np.zeros([orig_shape[0], orig_shape[1], orig_shape[2]])
             final_estimated[rx:rX,ry:rY,rz:rZ] = estimated[lx:lX,ly:lY,lz:lZ]
             # import pdb;pdb.set_trace()
             final_out = unnormalize_img(final_out, sample['max'].numpy(), 0, 1, 0)
+            # final_field = unnormalize_img(final_field, sample['max'].numpy(), 0, 1, 0)
+            # final_estimated = unnormalize_img(final_estimated, sample['max'].numpy(), 0, 1, 0)
+
            
             ref = nib.load(nii_path)
             nii = nib.Nifti1Image(final_out, affine=ref.affine, header=ref.header)
