@@ -53,23 +53,11 @@ def train(model, loader, optimizer, device, epoch):
     #with tqdm(total=len(loader)) as pbar:
     with tqdm(total=len(loader.dataset.train_iter)) as pbar:
         for batch_idx, sample in enumerate(loader):
-            in_features, correct, bias = sample['input'], sample['correct'], sample['bias']
-            in_features, correct, bias = in_features.to(device), correct.to(device), bias.to(device)
-            in_squeeze = in_features.squeeze()
-            in_numpy = (in_squeeze.cpu()).numpy()
-
-            loggabor = log_gabor_3d((24,24,24), (4, 4, 4), 0, 0, 0)
-            filtered_image1 = nd.convolve(in_numpy, loggabor)
-            loggabor = log_gabor_3d((16,16,16), (4, 4, 4), 0, 0, 0)
-            filtered_image2 = nd.convolve(in_numpy, loggabor)
-            loggabor = log_gabor_3d((8,8,8), (4, 4, 4), 0, 0, 0)
-            filtered_image3 = nd.convolve(in_numpy, loggabor)
-            filtered_image1 = torch.Tensor(filtered_image1[np.newaxis,np.newaxis,...])
-            filtered_image2 = torch.Tensor(filtered_image2[np.newaxis,np.newaxis,...])
-            filtered_image3 = torch.Tensor(filtered_image3[np.newaxis,np.newaxis,...])
+            in_features, correct, bias, filtered_image1, filtered_image2, filtered_image3 = sample['input'], sample['correct'], sample['bias'],  sample['f1'],  sample['f2'],  sample['f3']
+            in_features, correct, bias, filtered_image1, filtered_image2, filtered_image3 = in_features.to(device), correct.to(device), bias.to(device), filtered_image1.to(device), filtered_image2.to(device), filtered_image3.to(device)
 
             optimizer.zero_grad()
-            field = model(in_features,filtered_image1.to(device),filtered_image2.to(device),filtered_image3.to(device))
+            field = model(in_features, filtered_image1, filtered_image2, filtered_image3)
             pred = in_features / field
             # loss_fun = torch.nn.L1Loss()
             loss_fun = torch.nn.MSELoss() 
@@ -99,15 +87,18 @@ def test(model, loader, device):
     with torch.no_grad():
         with tqdm(total=len(loader)) as pbar:
             for batch_idx, sample in enumerate(loader):
-                in_features, correct, bias = sample['input'], sample['correct'], sample['bias']
-                in_features, correct, bias = in_features.to(device), correct.to(device), bias.to(device)
+                in_features, correct, bias, filtered_image1, filtered_image2, filtered_image3 = sample['input'], sample['correct'], sample['bias'],  sample['f1'],  sample['f2'],  sample['f3']
+                in_features, correct, bias, filtered_image1, filtered_image2, filtered_image3 = in_features.to(device), correct.to(device), bias.to(device), filtered_image1.to(device), filtered_image2.to(device), filtered_image3.to(device)
 
-
-                logfield = model(in_features,in_features,in_features,in_features)
-                logpred = torch.log(in_features) - logfield
+                # optimizer.zero_grad()
+                field = model(in_features, filtered_image1, filtered_image2, filtered_image3)
+                pred = in_features / field
+                # loss_fun = torch.nn.L1Loss()
                 loss_fun = torch.nn.MSELoss() 
-                ssim_loss = SSIM(data_range=1, size_average=False)
-                loss = ssim_loss(torch.exp(logfield), bias) + loss_fun(torch.exp(logpred), correct) 
+                alpha = 1
+                beta = 0.01
+                ssim_loss = SSIM(win_size=11, data_range=1,channel=108)
+                loss = (beta * (1-ssim_loss(field[0,...], bias[0,...])) ) + (alpha * loss_fun(pred, bias) )
                 
                 mask = torch.Tensor(in_features > 0)
                 mask = mask / torch.sum(mask)
