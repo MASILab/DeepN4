@@ -7,6 +7,7 @@ import nibabel as nib
 from pathlib import Path
 import os
 import nibabel.processing as proc
+from scipy.ndimage import gaussian_filter
 # from loss import GeneratorLoss
 
 # genloss = GeneratorLoss().cuda()
@@ -128,8 +129,8 @@ def predict(model, loader, device, nii_path, out_path, out_bias_path, est_bias_p
             
             rmse_image = rmse(output, target.cpu())
             print('RMSE image', rmse_image)
-            rmse_field = rmse(estimated, field)
-            print('RMSE field', rmse_field) 
+            # rmse_field = rmse(estimated, field)
+            # print('RMSE field', rmse_field) 
 
             pad_idx, orig_shape = sample['pad_idx'], sample['orig_shape']
             lx,lX,ly,lY,lz,lZ,rx,rX,ry,rY,rz,rZ = pad_idx
@@ -141,6 +142,8 @@ def predict(model, loader, device, nii_path, out_path, out_bias_path, est_bias_p
             final_field[rx:rX,ry:rY,rz:rZ] = field[lx:lX,ly:lY,lz:lZ]
             final_estimated = np.zeros([orig_shape[0], orig_shape[1], orig_shape[2]])
             final_estimated[rx:rX,ry:rY,rz:rZ] = estimated[lx:lX,ly:lY,lz:lZ]
+
+#            final_field = gaussian_filter(final_field, sigma=5)
 
             ref = nib.load(nii_path)
 

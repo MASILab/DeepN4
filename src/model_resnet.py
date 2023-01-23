@@ -39,9 +39,10 @@ class BiasNet(nn.Module):
         del input2
         i3 = self.conv3(input3)
         del input3
-        # i4 = self.conv4(input4)
-        l1 = i1 + i2# + i3 #+ i4
-        del i1, i2, i3
+        i4 = self.conv4(input4)
+        del input4
+        l1 = i1 + i2 + i3 + i4
+        del i1, i2, i3, i4
         l2 = self.crblocks(l1)
         del l1
         return self.conv5(l2)

@@ -5,8 +5,8 @@ import torch
 class AutoEncoder(nn.Module):
     def __init__(self):
         super(AutoEncoder, self).__init__()
-        in_channels = 32 * 32 * 32 
-        out_channels = 64 #256 #1024 #64
+        in_channels = 64 * 64 * 64 
+        out_channels = 128 #256 #1024 #64
 
         #Encoder
         self.flat = nn.Flatten()
@@ -35,6 +35,6 @@ class AutoEncoder(nn.Module):
     def forward(self, x):
         z = self.encode(x)
         r = self.decode(z)
-        out = torch.reshape(r, (32,32,32))
+        out = torch.reshape(r, (64, 64, 64))
         # bin = torch.round(torch.sigmoid(r)) # THIS IS A BAD IDEA
         return out

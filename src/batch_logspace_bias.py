@@ -7,6 +7,7 @@ import nibabel as nib
 from pathlib import Path
 import os
 import nibabel.processing as proc
+from scipy.ndimage import gaussian_filter
 # from loss import GeneratorLoss
 
 # genloss = GeneratorLoss().cuda()
@@ -113,7 +114,7 @@ def predict(model, loader, device, nii_path, out_path, out_bias_path, est_bias_p
                 pbar.set_description("  Test  \tAvg Loss: {:.4f}".format(total_loss / (batch_idx + 1)))
                 pbar.update(1)
 
-                output = output.cpu()  
+                # output = output.cpu()  
                 field = field.cpu()
                 estimated = estimated.cpu()
                 outputs.append(output.clone())
@@ -122,26 +123,34 @@ def predict(model, loader, device, nii_path, out_path, out_bias_path, est_bias_p
             
             pad_idx, orig_shape = sample['pad_idx'], sample['orig_shape']
             lx,lX,ly,lY,lz,lZ,rx,rX,ry,rY,rz,rZ = pad_idx
-            out = torch.stack(outputs, dim=0).squeeze()
-            out = out.numpy() 
+            # out = torch.stack(outputs, dim=0).squeeze()
+            # out = out.numpy() 
             field = field.squeeze()
-            field = field.numpy()
+            # field = field.numpy()
             estimated = estimated.squeeze()
             estimated = estimated.numpy()
+            input_data = sample['input'].squeeze()
 
-            rmse_image = rmse(output, target.cpu())
-            print('RMSE image', rmse_image)
+            # rmse_image = rmse(output, target.cpu())
+            # print('RMSE image', rmse_image)
             rmse_field = rmse(estimated, field)
             print('RMSE field', rmse_field) 
             
             # shape back to orginal image and unnormalize
-            final_out = np.zeros([orig_shape[0], orig_shape[1], orig_shape[2]])
-            final_out[rx:rX,ry:rY,rz:rZ] = out[lx:lX,ly:lY,lz:lZ]
+            # final_out = np.zeros([orig_shape[0], orig_shape[1], orig_shape[2]])
+            # final_out[rx:rX,ry:rY,rz:rZ] = out[lx:lX,ly:lY,lz:lZ]
             final_field = np.zeros([orig_shape[0], orig_shape[1], orig_shape[2]])
             final_field[rx:rX,ry:rY,rz:rZ] = field[lx:lX,ly:lY,lz:lZ]
+
             final_estimated = np.zeros([orig_shape[0], orig_shape[1], orig_shape[2]])
             final_estimated[rx:rX,ry:rY,rz:rZ] = estimated[lx:lX,ly:lY,lz:lZ]
             # import pdb;pdb.set_trace()
+
+            final_input = np.zeros([orig_shape[0], orig_shape[1], orig_shape[2]])
+            final_input[rx:rX,ry:rY,rz:rZ] = input_data[lx:lX,ly:lY,lz:lZ]
+#            final_field = gaussian_filter(final_field, sigma=5)
+            final_out = final_input / final_field
+
             final_out = unnormalize_img(final_out, sample['max'].numpy(), 0, 1, 0)
            
             ref = nib.load(nii_path)

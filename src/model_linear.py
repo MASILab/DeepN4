@@ -104,7 +104,7 @@ class UNet3D(nn.Module):
         d1   = self.dc1(d2)
         del d3, d2
 
-        d0   = self.dc0(d1)
+        d0   = self.dc0(d1) 
         del d1
 
         # Last layer without relu

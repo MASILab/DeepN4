@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
-from data_targbias_aug import *
+from data_targbias_noaug import *
 from batch_targbias_noaug import train, test, predict
 from model_linear import *
 from utils import *
@@ -9,7 +9,7 @@ import os
 # import torchvision.transforms as transforms
 from torch.utils.tensorboard import SummaryWriter
 
-def pred_model(val_file, checkpoint_file, model_dir):
+def pred_model(val_file, checkpoint_file, model_dir,file_dir):
     use_cuda = torch.cuda.is_available()
     torch.manual_seed(1)
     device = torch.device("cuda:0" if use_cuda else "cpu")
@@ -18,14 +18,14 @@ def pred_model(val_file, checkpoint_file, model_dir):
     model = UNet3D(1, 1).to(device)
     # model = _NetG().to(device)
     model = load_model(model, checkpoint_file)
- 
+
     with open(val_file, 'r') as f:
         for l in f.readlines():
             paths = l.strip().split(',')
             # outpath = '{}/{}_{}'.format(Path(paths[1]).parent, 'pred', Path(paths[1]).name)
-            outpath = os.path.join(model_dir ,'pred_3dunet_bothloss400_1e-4aug2.nii.gz')
-            outpath_bias = os.path.join(model_dir ,'pred_biasfield_bothloss400_1e-4aug2.nii.gz')
-            estpath_bias = os.path.join(model_dir ,'est_biasfield_bothloss400_1e-4aug2.nii.gz')
+            outpath = os.path.join(file_dir ,'pred_3dunet_bothloss400_1e-4aug.nii.gz')
+            outpath_bias = os.path.join(file_dir ,'pred_biasfield_bothloss400_1e-4aug.nii.gz')
+            estpath_bias = os.path.join(file_dir ,'est_biasfield_bothloss400_1e-4aug.nii.gz')
             print(outpath)
             # val_dataset = dataset_predict(paths)
             val_dataset = dataset_predict(paths)
@@ -37,13 +37,13 @@ def pred_model(val_file, checkpoint_file, model_dir):
 def test_model(val_file, checkpoint_file):
     use_cuda = torch.cuda.is_available()
     torch.manual_seed(1)
-
+    device = torch.device("cuda:1" if use_cuda else "cpu")
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
 
     val_dataset = dataset(val_file)
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, **kwargs)
 
-    model = UNet3D(1, 1).to(device)
+    model = UNet_Eyeballs_Sandbox(1, 1).to(device)
     # model = _NetG().to(device)
 
     model = load_model(model, checkpoint_file)
@@ -56,8 +56,8 @@ def train_model(train_file, val_file, model_dir, ten_out_dir, cont_train=False, 
     use_cuda = torch.cuda.is_available()
     print("Running on {}".format(use_cuda))
     torch.manual_seed(1)
-    device = torch.device("cuda:0" if use_cuda else "cpu")
-    kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {} 
+    device = torch.device("cuda:1" if use_cuda else "cpu")
+    kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
 
     # trans_train = transforms.Compose([
     #                               transforms.RandomHorizontalFlip(),
@@ -79,7 +79,7 @@ def train_model(train_file, val_file, model_dir, ten_out_dir, cont_train=False, 
 
     lr = 1e-4
     # lr = 0.0001
-    model = UNet3D(1, 1).to(device)
+    model = UNet_Eyeballs_Sandbox(1, 1).to(device)
     # model = _NetG().to(device)
     # model = Duelling_CNN().to(device)
     # duel = Duelling_CNN().to(device)
@@ -115,7 +115,7 @@ def train_model(train_file, val_file, model_dir, ten_out_dir, cont_train=False, 
             min_loss = val_loss
             save_model(model, optimizer, '{}/checkpoint_epoch_{}'.format(model_dir, epoch))
 
-        writer.add_scalars('Loss',   {'Train_3dunet_bothloss400_1e-4aug2': train_loss, 'Validation_3dunet_bothloss400_1e-4aug2': val_loss}, epoch)
+        writer.add_scalars('Loss',   {'Train_3dunet_bothloss400_deepaug': train_loss, 'Validation_3dunet_bothloss400_deepaug': val_loss}, epoch)
 
     
         # if epoch%10 == 0:
@@ -128,18 +128,19 @@ def main():
     # test_file = '../folds/test.csv'
     train_file = '/nfs/masi/kanakap/projects/DeepN4/src/cbtrain_400ds.csv'
     val_file = '/nfs/masi/kanakap/projects/DeepN4/src/cbval_400ds.csv'
-    test_file = '/nfs/masi/kanakap/projects/DeepN4/src/cbtest_400ds.csv'
+    test_file = '/nfs/masi/kanakap/projects/DeepN4/src/all_test.csv'
     #test_file = '/nfs/masi/kanakap/projects/DeepN4/src/cbtest_train_5ds.csv'
 
-    model_dir = '/nfs/masi/kanakap/projects/DeepN4/src/unet_trained_model_bothloss400_1e-4aug2'
-    fcheckpoint = 'checkpoint_epoch_335'
+    model_dir = '/nfs/masi/kanakap/projects/DeepN4/src/unet_trained_model_bothloss400_1e-4aug'
+    fcheckpoint = 'checkpoint_epoch_212'
+    file_dir = '/nfs/masi/kanakap/projects/DeepN4/src/unet_trained_model_all'
     if not os.path.isdir(model_dir):
         os.mkdir(model_dir)
     ten_out_dir = '/nfs/masi/kanakap/projects/DeepN4/src/output2'
 
-    train_model(train_file, val_file, model_dir, ten_out_dir, cont_train=False, checkpoint_file='{}/{}'.format(model_dir, fcheckpoint))
+    #train_model(train_file, val_file, model_dir, ten_out_dir, cont_train=False, checkpoint_file='{}/{}'.format(model_dir, fcheckpoint))
     # test_model(test_file, '{}/{}'.format(model_dir, fcheckpoint))
-    #pred_model(test_file, '{}/{}'.format(model_dir, fcheckpoint),model_dir)
+    pred_model(test_file, '{}/{}'.format(model_dir, fcheckpoint),model_dir,file_dir)
 
 if __name__ == '__main__':
     main()
