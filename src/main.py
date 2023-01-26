@@ -1,85 +1,75 @@
-import torch
-from torch.utils.data import DataLoader
-from data_targbias_aug import *
-from batch_targbias_noaug import train, test, predict
-from model_linear import *
-from utils import *
 import os
-# import torchvision
-# import torchvision.transforms as transforms
+import sys
+import torch
+from utils import *
+from model_all import *
+from data_targbias_final import *
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from batch_targbias_noaug import train, test, predict
 
-def pred_model(val_file, checkpoint_file, model_dir):
+
+def pred_model(model_type, gpu_no, val_file, checkpoint_file, pred_dir):
     use_cuda = torch.cuda.is_available()
     torch.manual_seed(1)
-    device = torch.device("cuda:0" if use_cuda else "cpu")
-    kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
+    device = torch.device("cuda:" + gpu_no if use_cuda else "cpu")
+    kwargs = {'num_workers': 10, 'pin_memory': True} if use_cuda else {}
 
-    model = UNet3D(1, 1).to(device)
-    # model = _NetG().to(device)
+    
+    model = model_type(1, 1).to(device)
     model = load_model(model, checkpoint_file)
  
     with open(val_file, 'r') as f:
         for l in f.readlines():
             paths = l.strip().split(',')
+            #paths = l.replace('\n','').split(',')
+            filename = paths[0].split('/')[7].split(',')[0]
             # outpath = '{}/{}_{}'.format(Path(paths[1]).parent, 'pred', Path(paths[1]).name)
-            outpath = os.path.join(model_dir ,'pred_3dunet_bothloss400_1e-4aug2.nii.gz')
-            outpath_bias = os.path.join(model_dir ,'pred_biasfield_bothloss400_1e-4aug2.nii.gz')
-            estpath_bias = os.path.join(model_dir ,'est_biasfield_bothloss400_1e-4aug2.nii.gz')
+            outpath = os.path.join(pred_dir ,'pred' + filename )
+            outpath_bias = os.path.join(pred_dir ,'pred_biasfield' + filename )
+            estpath_bias = os.path.join(pred_dir ,'est_biasfield' + filename )
             print(outpath)
             # val_dataset = dataset_predict(paths)
+            print(paths)
             val_dataset = dataset_predict(paths)
             val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, **kwargs)
             predict(model, val_loader, device, paths[1], outpath, outpath_bias, estpath_bias)
-            break
 
 
-def test_model(val_file, checkpoint_file):
+def test_model(model_type, gpu_no, val_file, checkpoint_file):
     use_cuda = torch.cuda.is_available()
     torch.manual_seed(1)
-
-    kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
+    device = torch.device("cuda:" + gpu_no if use_cuda else "cpu")
+    kwargs = {'num_workers': 10, 'pin_memory': True} if use_cuda else {}
 
     val_dataset = dataset(val_file)
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, **kwargs)
 
-    model = UNet3D(1, 1).to(device)
-    # model = _NetG().to(device)
-
+    model = model_type(1, 1).to(device)
     model = load_model(model, checkpoint_file)
+    test_loss = test(model, val_loader, device)
 
-    test_loss = test(model, val_loader, device)#, save_output=True)
 
-
-def train_model(train_file, val_file, model_dir, ten_out_dir, cont_train=False, checkpoint_file=''):
-    writer = SummaryWriter(ten_out_dir)
+def train_model(model_type, model_folder, gpu_no, aug, train_file, val_file, model_dir, tb_dir, cont_train=False, checkpoint_file=''):
+    writer = SummaryWriter(tb_dir)
     use_cuda = torch.cuda.is_available()
-    print("Running on {}".format(use_cuda))
+    print("Running training".format(use_cuda))
     torch.manual_seed(1)
-    device = torch.device("cuda:0" if use_cuda else "cpu")
-    kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {} 
+    device = torch.device("cuda:" + gpu_no if use_cuda else "cpu")
+    print(torch.cuda.get_device_name(int(gpu_no)))
+    kwargs = {'num_workers': 10, 'pin_memory': True} if use_cuda else {} 
 
-    # trans_train = transforms.Compose([
-    #                               transforms.RandomHorizontalFlip(),
-    #                               transforms.RandomRotation(degrees=20),
-    #                               transforms.ToTensor()])
-
-    # trans_valid = transforms.Compose([
-    #                               transforms.RandomHorizontalFlip(),
-    #                               transforms.RandomRotation(degrees=20),
-    #                               transforms.ToTensor()])
-
-    train_dataset = dataset(train_file,transform=True)
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False, **kwargs)
+    train_dataset = dataset(train_file,transform=aug)
+    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, **kwargs)
 
     # import pdb;pdb.set_trace()
 
     val_dataset = dataset(val_file)
-    val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, **kwargs)
+    val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True, **kwargs)
 
     lr = 1e-4
     # lr = 0.0001
-    model = UNet3D(1, 1).to(device)
+    model = model_type(1, 1).to(device)
     # model = _NetG().to(device)
     # model = Duelling_CNN().to(device)
     # duel = Duelling_CNN().to(device)
@@ -111,35 +101,47 @@ def train_model(train_file, val_file, model_dir, ten_out_dir, cont_train=False, 
         with open('{}/val_loss.txt'.format(model_dir), 'a') as f:
             f.write('{}\n'.format(val_loss))
 
+        # save model for epoch when val loss is less than train loss 
         if val_loss < min_loss:
             min_loss = val_loss
             save_model(model, optimizer, '{}/checkpoint_epoch_{}'.format(model_dir, epoch))
-
-        writer.add_scalars('Loss',   {'Train_3dunet_bothloss400_1e-4aug2': train_loss, 'Validation_3dunet_bothloss400_1e-4aug2': val_loss}, epoch)
-
-    
-        # if epoch%10 == 0:
-        #     lr = lr/2
-        #     for param_group in optimizer.param_groups:
-        #         param_group['lr'] = lr
+        #change
+        writer.add_scalars('Loss',   {'Train_' + model_folder: train_loss, 'Validation_' + model_folder: val_loss}, epoch)
 
 
 def main():
     # test_file = '../folds/test.csv'
-    train_file = '/nfs/masi/kanakap/projects/DeepN4/src/cbtrain_400ds.csv'
-    val_file = '/nfs/masi/kanakap/projects/DeepN4/src/cbval_400ds.csv'
-    test_file = '/nfs/masi/kanakap/projects/DeepN4/src/cbtest_400ds.csv'
+    train_file = '/nfs/masi/kanakap/projects/DeepN4/src/train_all.csv'
+    val_file = '/nfs/masi/kanakap/projects/DeepN4/src/val_all.csv'
+    test_file = '/nfs/masi/kanakap/projects/DeepN4/src/test_all.csv'
     #test_file = '/nfs/masi/kanakap/projects/DeepN4/src/cbtest_train_5ds.csv'
 
-    model_dir = '/nfs/masi/kanakap/projects/DeepN4/src/unet_trained_model_bothloss400_1e-4aug2'
-    fcheckpoint = 'checkpoint_epoch_335'
+    run_type = sys.argv[1]         # train / test/ pred
+    gpu_no = sys.argv[2]           # 0 , 1
+    model_type = eval(sys.argv[3])       # Synbo_UNet3D, trad_UNet3D, bspline_UNet3D
+    aug = sys.argv[4]              # True / False
+    model_folder = sys.argv[4]     # trained_model_<bspline_UNet3D_aug>
+    tb_folder = sys.argv[5]        # tensorboad output 
+    output_folder = sys.argv[7]    # pred_output_<bspline_UNet3D_aug>
+    fcheckpoint = sys.argv[6]      #'checkpoint_epoch_335'
+
+    
+    model_dir = '/nfs/masi/kanakap/projects/DeepN4/src/trained_model_' + model_folder  
     if not os.path.isdir(model_dir):
         os.mkdir(model_dir)
-    ten_out_dir = '/nfs/masi/kanakap/projects/DeepN4/src/output2'
+    tb_dir = '/nfs/masi/kanakap/projects/DeepN4/src/' + tb_folder
+    if not os.path.isdir(tb_folder):
+        os.mkdir(tb_folder)
+    pred_dir = '/nfs/masi/kanakap/projects/DeepN4/src/pred_output_' + output_folder
+    if not os.path.isdir(pred_dir):
+        os.mkdir(pred_dir)
 
-    train_model(train_file, val_file, model_dir, ten_out_dir, cont_train=False, checkpoint_file='{}/{}'.format(model_dir, fcheckpoint))
-    # test_model(test_file, '{}/{}'.format(model_dir, fcheckpoint))
-    #pred_model(test_file, '{}/{}'.format(model_dir, fcheckpoint),model_dir)
+    if run_type == 'train':
+        train_model(model_type, model_folder, gpu_no, aug, train_file, val_file, model_dir, tb_dir, cont_train=False, checkpoint_file='{}/{}'.format(model_dir, fcheckpoint))
+    elif run_type == 'test':
+        test_model(test_file,gpu_no, '{}/{}'.format(model_dir, fcheckpoint))
+    elif run_type == 'pred': 
+        pred_model(model_type, gpu_no, test_file, '{}/{}'.format(model_dir, fcheckpoint),pred_dir)
 
 if __name__ == '__main__':
     main()
