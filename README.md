@@ -4,7 +4,7 @@ Official Pytorch implementation of DeepN4, from the paper:
 DeepN4: Learning ITKN4 Bias Field Correction for T1 weighted Images 
 
 ---
-We propose **DeepN4**, a 3D UNet to generate Bias Field for T1w images and inturn corrected T1w images for inhomogeneity  
+We propose **DeepN4**, a 3D UNet to generate Bias Field for T1w images and inturn correct T1w images for inhomogeneities.
 
 <p align="center">
 <img src="Figures/fig.png" width=100% height=40% 
