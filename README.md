@@ -11,7 +11,7 @@ class="center">
 * **ADD**:  Please look into the ### for creating conda environment and package installation procedures. 
 
 ## Training
-1. ## dataset file 
+1. TODO dataset file 
 2. Run 
 ```
 python test_seg.py --root path_to_image_folder --output path_to_output \
