@@ -1,0 +1,5 @@
+./src/pred*
+./src/unet_*
+./src/trained_*
+./src/output*
+./src/*.csv
