@@ -8,10 +8,10 @@ class="center">
 </p>
 
 ## Prequisite installation
-Please look into the ### for creating conda environment and package installation procedures. 
+Please look into `requirements.txt` for libraries and versions used in the virutal environment. 
 
 ## Training and Testing
-1. TODO dataset file 
+1. Input train/test/val format: csv file with each row with `/path/to/corrected_T1.nii.gz,/path/to/input.nii.gz,/path/to/bias_field.nii.gz` for each subject 
 2. Run training 
 ```
 python main.py train 0 Synbo_UNet3D False /path/to/save/model /path/to/tensorboard/output \
@@ -24,7 +24,8 @@ python main.py pred 0 Synbo_UNet3D False /path/to/saved/model /path/to/tensorboa
 ```
 
 ## External evaluation 
-Efficient evaulation can be performed for the public datasets as follows.... Here is an example for... 
+
+Efficient evaulation can be performed for the public datasets as in `Evaluation_deepN4.ipynb`. The example data used is in `data/`
 
 ---
 
