@@ -8,7 +8,7 @@ class="center">
 </p>
 
 ## Prequisite installation
-* **ADD**:  Please look into the ### for creating conda environment and package installation procedures. 
+Please look into the ### for creating conda environment and package installation procedures. 
 
 ## Training
 1. TODO dataset file 
