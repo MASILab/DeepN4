@@ -10,16 +10,21 @@ class="center">
 ## Prequisite installation
 Please look into the ### for creating conda environment and package installation procedures. 
 
-## Training
+## Training and Testing
 1. TODO dataset file 
-2. Run 
+2. Run training 
 ```
-python test_seg.py --root path_to_image_folder --output path_to_output \
---dataset flare --network 3DUXNET --trained_weights path_to_trained_weights \
+python main.py train 0 Synbo_UNet3D False /path/to/save/model /path/to/tensorboard/output \
+/path/to/save/predictions checkpoint_epoch_# guass \
+```
+3. Run testing 
+```
+python main.py pred 0 Synbo_UNet3D False /path/to/saved/model /path/to/tensorboard/output \ 
+/path/to/save/predictions checkpoint_epoch_# guass \
 ```
 
-## Evaluation
-Efficient evaulation can be performed for the public datasets as follows:
+## External evaluation 
+Efficient evaulation can be performed for the public datasets as follows.... Here is an example for... 
 
 ---
 
