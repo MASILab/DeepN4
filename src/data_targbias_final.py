@@ -118,6 +118,7 @@ class dataset(Dataset):
 
 class dataset_predict(dataset):
     def __init__(self, paths, task=1):
+        self.transform = 'False'
         self.load({'correct':paths[0], 'input':paths[task], 'bias':paths[2]})#, 'bval': paths[3], 'bvec': paths[4]})
 
 
