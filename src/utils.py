@@ -33,6 +33,44 @@ def unnormalize_img(img, max_img, min_img, max, min):
 
     return img
 
+def pad(self, img, sz):
+
+    tmp = np.zeros((sz, sz, sz))
+
+    diff = int((sz-img.shape[0])/2)
+    lx = max(diff,0)
+    lX = min(img.shape[0]+diff,sz)
+
+    diff = (img.shape[0]-sz) / 2
+    rx = max(int(np.floor(diff)),0)
+    rX = min(img.shape[0]-int(np.ceil(diff)),img.shape[0])
+
+    diff = int((sz - img.shape[1]) / 2)
+    ly = max(diff, 0)
+    lY = min(img.shape[1] + diff, sz)
+
+    diff = (img.shape[1] - sz) / 2
+    ry = max(int(np.floor(diff)), 0)
+    rY = min(img.shape[1] - int(np.ceil(diff)), img.shape[1])
+
+    diff = int((sz - img.shape[2]) / 2)
+    lz = max(diff, 0)
+    lZ = min(img.shape[2] + diff, sz)
+
+    diff = (img.shape[2] - sz) / 2
+    rz = max(int(np.floor(diff)), 0)
+    rZ = min(img.shape[2] - int(np.ceil(diff)), img.shape[2])
+
+    tmp[lx:lX,ly:lY,lz:lZ] = img[rx:rX,ry:rY,rz:rZ]
+
+    return tmp, [lx,lX,ly,lY,lz,lZ,rx,rX,ry,rY,rz,rZ]
+
+def normalize_img(self, img, max_img, min_img, a_max, a_min):
+
+    img = (img - min_img)/(max_img - min_img)
+    img = np.clip(img, a_max=a_max, a_min=a_min)
+
+    return img
 
 def rmse(a,b):   
     MSE = np.square(np.subtract(a,b)).mean()
