@@ -3,8 +3,6 @@ import glob
 import subprocess
 from tqdm import tqdm
 
-
-
 # Get the T1s in BIDS folders
 # root_src = "/nfs2/harmonization/BIDS/ADNI_tmp"
 # root_out = "/nfs2/harmonization/BIDS/ADNI_tmp/derivatives/N4BiasFieldCorrection"

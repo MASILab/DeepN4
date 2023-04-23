@@ -15,7 +15,7 @@ MNIWRAP=$WORKDIR/T12MNI1Warp.nii.gz
 TransT12MNI=$OUT_T1
 TransN42MNI=$OUT_N4
 
-/nfs/masi/caily/apps/ants/bin/antsRegistrationSyNQuick.sh -f $MNI_atlas -m $T1 -o $T12MNI -n 60
+/nfs/masi/caily/apps/ants/bin/antsRegistrationSyNQuick.sh -f $MNI_atlas -m $T1 -o $T12MNI -n 60 -t r 
 
 /nfs/masi/caily/apps/ants/bin/antsApplyTransforms -d 3 -i $T1 -r $MNI_atlas -o $TransT12MNI -t $MNIWRAP -t $AFFLINE
 

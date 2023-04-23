@@ -10,7 +10,7 @@ status_code=$?
 if [ $? -eq 0 ]
 then
 echo "Writting T1s"
-ls $PROJECT_PATH/sub*/ses*/anat/*_T1w.nii >> /nfs/masi/kanakap/projects/DeepN4/2all_T1s.txt
+ls $PROJECT_PATH/sub*/ses*/anat/*_T1w.nii.gz >> /nfs/masi/kanakap/projects/DeepN4/oasis3_T1s.txt
 #ls $PROJECT_PATH/sub*/anat/*_T1w.nii.gz >> /nfs/masi/kanakap/projects/DeepN4/2all_T1s.txt
 else
 echo "Count failed"
