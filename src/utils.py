@@ -2,6 +2,7 @@ import nibabel as nib
 import torch
 import numpy as np
 import math
+import ants
 
 def save_nifti(x, save_path, nifti_path):
     nib_img = nib.Nifti1Image(x, nib.load(nifti_path).affine, nib.load(nifti_path).header)
@@ -37,3 +38,61 @@ def rmse(a,b):
     MSE = np.square(np.subtract(a,b)).mean()
     RMSE = math.sqrt(MSE)
     return RMSE
+
+
+def init_parameters(self):
+    '''
+    initialize transformation parameters
+    return random transformaion parameters
+    '''
+    self.init_config(self.config_dict)
+    self._device = 'cuda' if self.use_gpu else 'cpu'
+
+    self._dim = len(self.control_point_spacing)
+    self.spacing = self.control_point_spacing
+    self._dtype = torch.float32
+    self.batch_size = self.data_size[0]
+    self._image_size = np.array(self.data_size[2:])
+    self.magnitude = self.epsilon
+    assert 0<=self.magnitude<1, 'please set magnitude witihin [0,1)'
+    self.order = self.interpolation_order
+    self.downscale = self.downscale  # reduce image size to save memory
+
+    self.use_log = True  if self.space == 'log' else False
+
+    # contruct and initialize control points grid with random values
+    self.param, self.interp_kernel = self.init_control_points_config()
+    return self.param
+
+def bspline_ants(k, data_cropped, axis, interp_mmap):
+    number_of_random_points = 10000
+    slice_idx = k
+    if axis == 'z':
+        img_array = data_cropped[:,:,slice_idx]
+    if axis == 'y':
+        img_array = data_cropped[:,slice_idx,:]
+    if axis == 'x':
+        img_array = data_cropped[slice_idx,:,:]
+
+    row_indices = np.random.choice(range(2, img_array.shape[0]), number_of_random_points)
+    col_indices = np.random.choice(range(2, img_array.shape[1]), number_of_random_points)
+    scattered_data = np.zeros((number_of_random_points, 1))
+    parametric_data = np.zeros((number_of_random_points, 2))
+    for i in range(number_of_random_points):
+        scattered_data[i,0] = img_array[row_indices[i], col_indices[i]]
+        parametric_data[i,0] = row_indices[i]
+        parametric_data[i,1] = col_indices[i]
+
+    bspline_img = ants.fit_bspline_object_to_scattered_data(
+        scattered_data, parametric_data,
+        parametric_domain_origin=[0.0, 0.0],
+        parametric_domain_spacing=[1.0, 1.0],
+        parametric_domain_size = img_array.shape,
+        number_of_fitting_levels=5, mesh_size=1)
+
+    if axis == 'z':
+        interp_mmap[:, :, k] = bspline_img.numpy()[:,:]
+    if axis == 'y':
+        interp_mmap[:, k, :] = bspline_img.numpy()[:,:]
+    if axis == 'x':
+        interp_mmap[k, :, :] = bspline_img.numpy()[:,:]
