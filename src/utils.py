@@ -33,7 +33,7 @@ def unnormalize_img(img, max_img, min_img, max, min):
 
     return img
 
-def pad(self, img, sz):
+def pad(img, sz):
 
     tmp = np.zeros((sz, sz, sz))
 
@@ -65,7 +65,7 @@ def pad(self, img, sz):
 
     return tmp, [lx,lX,ly,lY,lz,lZ,rx,rX,ry,rY,rz,rZ]
 
-def normalize_img(self, img, max_img, min_img, a_max, a_min):
+def normalize_img(img, max_img, min_img, a_max, a_min):
 
     img = (img - min_img)/(max_img - min_img)
     img = np.clip(img, a_max=a_max, a_min=a_min)

@@ -53,8 +53,8 @@ class Synbo_UNet3D(nn.Module):
             nn.LeakyReLU())
         return layer
 
-    def forward(self, x):
-        # Encode
+    def forward(self, x, device):
+        # Encodes
         e0   = self.ec0(x)
         syn0 = self.ec1(e0)
         del e0
