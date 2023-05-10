@@ -2,8 +2,8 @@ import torch
 import numpy as np
 from torch import nn
 from torch.nn import functional as F
-from scratch.bspline_fix import *
-from scratch.pad_within import *
+from src.bspline_fix import *
+from src.pad_within import *
 
 class Synbo_UNet3D(nn.Module):
     def __init__(self, n_in, n_out):
@@ -53,7 +53,7 @@ class Synbo_UNet3D(nn.Module):
             nn.LeakyReLU())
         return layer
 
-    def forward(self, x, device):
+    def forward(self, x):
         # Encode
         e0   = self.ec0(x)
         syn0 = self.ec1(e0)
