@@ -1,3 +1,5 @@
+matplotlib==3.6.0
+numpy==1.23.5
 antspyx==0.3.8
 nibabel==3.0.2
 nilearn==0.6.2
