@@ -1,8 +1,8 @@
 import os
 import torch
 import argparse as ap
-from src.utils import *
-from src.model_all import *
+from utils import *
+from model_all import *
 from nilearn.image import resample_img
 from scipy.ndimage import gaussian_filter
 
