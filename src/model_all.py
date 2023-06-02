@@ -2,8 +2,8 @@ import torch
 import numpy as np
 from torch import nn
 from torch.nn import functional as F
-from src.bspline_fix import *
-from src.pad_within import *
+from bspline_fix import *
+from pad_within import *
 
 class Synbo_UNet3D(nn.Module):
     def __init__(self, n_in, n_out):
