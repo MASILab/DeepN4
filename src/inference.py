@@ -70,10 +70,14 @@ def main():
     output_file = args.out_dir
     bias_file = args.bias_file
 
+    print('INPUT FILE: {}'.format(input_file))
+    print('OUTPUT FILE: {}'.format(output_file))
+
     resample_file = '/tmp/resampled.nii.gz'
     x_res, y_res, z_res = 2, 2, 2
     os.system('mri_convert \"{}\" \"{}\" -vs {} {} {} -rt cubic'.format(input_file, resample_file, x_res, y_res, z_res))
 
+    print('CORRECTING FOR BIAS FIELD')
     final_corrected, final_field = pred_model(resample_file, checkpoint_file='/APPS/checkpoint_epoch_264')
 
     # Save
@@ -92,6 +96,8 @@ def main():
     output_img = resample_img(nib.Nifti1Image(final_corrected, nib.load(resample_file).affine), target_affine=ref.affine, target_shape=ref.shape)
     nib.save(output_img, output_file)
     os.remove('/tmp/resampled.nii.gz')
+    print('DONE')
+
 
 
 
