@@ -22,7 +22,10 @@ def load_checkpoint(model, optimizer, path):
     return model, optimizer
 
 def load_model(model, path):
-    checkpoint = torch.load(path)
+    if torch.cuda.is_available():
+        checkpoint = torch.load(path)
+    else:
+        checkpoint = torch.load(path,map_location=torch.device('cpu'))
     model.load_state_dict(checkpoint['model_state_dict'])
 
     return model
