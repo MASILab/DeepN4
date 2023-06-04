@@ -63,7 +63,7 @@ def main():
     parser = ap.ArgumentParser(description='DeepN4: Deep learning based N4 correction')
     parser.add_argument('in_file', help='A path to the INPUTS directory')
     parser.add_argument('out_file', help='A path to the OUTPUTS directory')
-    parser.add_argument('--bias_file', metavar='on/off', default='off', help='Save Bias field file')
+    parser.add_argument('--bias_file', action='store_true', help='Save Bias field file (default = do NOT save bias file)')
     args = parser.parse_args()
 
     input_dir = args.in_file
