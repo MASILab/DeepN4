@@ -75,7 +75,7 @@ def main():
 
     resample_file = '/tmp/resampled.nii.gz'
     x_res, y_res, z_res = 2, 2, 2
-    os.system('mri_convert \"{}\" \"{}\" -vs {} {} {} -rt cubic'.format(input_file, resample_file, x_res, y_res, z_res))
+    os.system('/APPS/freesurfer/bin/mri_convert \"{}\" \"{}\" -vs {} {} {} -rt cubic'.format(input_file, resample_file, x_res, y_res, z_res))
 
     print('CORRECTING FOR BIAS FIELD')
     final_corrected, final_field = pred_model(resample_file, checkpoint_file='/APPS/checkpoint_epoch_264')
