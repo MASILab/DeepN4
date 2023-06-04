@@ -26,7 +26,33 @@ python main.py pred 0 Synbo_UNet3D False /path/to/saved/model /path/to/tensorboa
 ## External evaluation 
 
 Efficient evaulation can be performed for the public datasets as in `Evaluation_deepN4.ipynb`. The example data used is in `data/` 
-The trained weights can be downloaded from https://drive.google.com/drive/folders/1mdBsV0kHRRV_Alu1QJrTT7N0GGNJDuiu?usp=sharing   
+The trained weights and the singualrity image can be downloaded from https://drive.google.com/drive/folders/1mdBsV0kHRRV_Alu1QJrTT7N0GGNJDuiu?usp=sharing   
+
+
+
+## Singularity 
+
+To containize the source code 
+```
+sudo singularity build deepn4v1.simg Singularity
+```
+
+To run singularity 
+```
+singaulrity run
+--contain -e
+-B /path/to/inputs/directory/:/INPUTS
+-B /path/to/outputs/directory/:/OUTPUTS
+-B /tmp:/tmp
+-B /path/to/freesurfer/license.txt:/APPS/freesurfer/license.txt
+deepn4v1.simg
+[options]
+```
+
+Inputs and arguments for singularity
+Input Directory: one T1 image named as t1.nii.gz
+Output Directory: results will be saved as t1processed.nii.gz and (if the option below is on) bias.nii.gz
+Options: "--bias_file" to save the bias field field
 
 ---
 
