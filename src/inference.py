@@ -61,21 +61,21 @@ def main():
 
     # Resample data
     parser = ap.ArgumentParser(description='DeepN4: Deep learning based N4 correction')
-    parser.add_argument('in_file', help='Input T1 image filename')
-    parser.add_argument('out_file', help='Output filename')
-    parser.add_argument('--bias_file', metavar='string', default='off', help='Bias field filename')
+    parser.add_argument('in_file', help='A path to the INPUTS directory')
+    parser.add_argument('out_file', help='A path to the OUTPUTS directory')
+    parser.add_argument('--bias_file', metavar='on/off', default='off', help='Save Bias field file')
     args = parser.parse_args()
 
-    input_file = args.in_file
-    output_file = args.out_file
+    input_dir = args.in_file
+    output_dir = args.out_file
     bias_file = args.bias_file
 
-    print('INPUT FILE: {}'.format(input_file))
-    print('OUTPUT FILE: {}'.format(output_file))
+    print('INPUT DIR: {}'.format(input_dir))
+    print('OUTPUT DIR: {}'.format(output_dir))
 
     resample_file = '/tmp/resampled.nii.gz'
     x_res, y_res, z_res = 2, 2, 2
-    os.system('/APPS/freesurfer/bin/mri_convert.bin \"{}\" \"{}\" -vs {} {} {} -rt cubic'.format(input_file, resample_file, x_res, y_res, z_res))
+    os.system('mri_convert \"{}\" \"{}\" -vs {} {} {} -rt cubic'.format(os.path.join(input_dir,'t1.nii.gz'), resample_file, x_res, y_res, z_res))
 
     print('CORRECTING FOR BIAS FIELD')
     final_corrected, final_field = pred_model(resample_file, checkpoint_file='/APPS/checkpoint_epoch_264')
@@ -87,14 +87,14 @@ def main():
     # nib.save(nii, '/nfs/masi/kanakap/projects/DeepN4/data/corrected_IXI015-HH-1258-T1.nii.gz')
 
     # bias field 
-    if bias_file != 'off':
+    if bias_file:
         nii = nib.Nifti1Image(final_field, affine=ref.affine, header=ref.header)
-        nib.save(nii, bias_file)
+        nib.save(nii, os.path.join(output_dir,'bias.nii.gz'))
 
     # Resample back to orginal resolution 
-    ref = nib.load(input_file)
+    ref = nib.load(os.path.join(input_dir,'t1.nii.gz'))
     output_img = resample_img(nib.Nifti1Image(final_corrected, nib.load(resample_file).affine), target_affine=ref.affine, target_shape=ref.shape)
-    nib.save(output_img, output_file)
+    nib.save(output_img, os.path.join(output_dir,'t1processed.nii.gz'))
     os.remove('/tmp/resampled.nii.gz')
     print('DONE')
 
