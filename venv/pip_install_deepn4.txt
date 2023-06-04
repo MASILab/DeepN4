@@ -1,9 +1,8 @@
 numpy==1.23.5
 matplotlib==3.6.0
 antspyx==0.3.8
-joblib==1.1.0
 scikit-learn==0.22.2.post1
 nibabel==3.0.2
-nilearn==0.6.2
+nilearn==0.8.0
 torch==1.13.0
 torchvision==0.14.0

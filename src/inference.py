@@ -66,8 +66,8 @@ def main():
     parser.add_argument('--bias_file', metavar='string', default='off', help='Bias field filename')
     args = parser.parse_args()
 
-    input_file = args.in_dir
-    output_file = args.out_dir
+    input_file = args.in_file
+    output_file = args.out_file
     bias_file = args.bias_file
 
     print('INPUT FILE: {}'.format(input_file))
@@ -97,6 +97,9 @@ def main():
     nib.save(output_img, output_file)
     os.remove('/tmp/resampled.nii.gz')
     print('DONE')
+
+if __name__ == '__main__':
+    main()
 
 
 
