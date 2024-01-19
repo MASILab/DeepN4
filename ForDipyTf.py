@@ -66,17 +66,14 @@ new_voxel_size = [2, 2, 2]
 resampled_T1 = resample_img(input_file, target_affine=np.diag(new_voxel_size))
 in_features, lx,lX,ly,lY,lz,lZ,rx,rX,ry,rY,rz,rZ, in_max = load_resample(resampled_T1)
 
-print('hi1')
 # Load the model 
 model = tf.saved_model.load(checkpoint_file)
 
-print('hi2')
 # Run the model to get the bias field
 logfield = model(input_1=Variable(in_features))
 field = np.exp(logfield['120'])
 field = field.squeeze()
 
-print('hi3')
 # Postprocess predicted field (reshape - unpad, smooth the field, upsample)
 org_data = resampled_T1.get_fdata()
 final_field = np.zeros([org_data.shape[0], org_data.shape[1], org_data.shape[2]])
@@ -85,7 +82,6 @@ final_fields = gaussian_filter(final_field, sigma=3)
 ref = nib.load(input_file)
 upsample_final_field = resample_img(nib.Nifti1Image(final_fields,resampled_T1.affine), target_affine=ref.affine, target_shape=ref.shape)
 
-print('hi4')
 # Correct the image
 upsample_data = upsample_final_field.get_fdata()
 ref_data = ref.get_fdata()
