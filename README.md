@@ -26,7 +26,7 @@ python main.py pred 0 Synbo_UNet3D False /path/to/saved/model /path/to/tensorboa
 ## External evaluation 
 
 Efficient evaulation can be performed for the public datasets as in `Evaluation_deepN4.ipynb`. The example data used is in `data/` 
-The trained weights and the singualrity image can be downloaded from https://drive.google.com/drive/folders/1mdBsV0kHRRV_Alu1QJrTT7N0GGNJDuiu?usp=sharing   
+The trained weights and the singualrity image can be downloaded from https://zenodo.org/records/15765107 or https://drive.google.com/drive/folders/1mdBsV0kHRRV_Alu1QJrTT7N0GGNJDuiu?usp=sharing   
 
 
 
